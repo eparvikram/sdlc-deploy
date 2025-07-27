@@ -1,0 +1,32 @@
+# mgmt-ai-sdlc-deploy/.github/workflows/deploy-dev.yml
+name: Deploy SDLC Middleware to Dev Env
+
+on:
+  push:
+    branches:
+      - uplift # Trigger on pushes to the 'uplift' branch
+    paths:
+      - 'sdlc-middleware/**' # Only trigger if changes are within the sdlc-middleware folder
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Kubeconfig (Placeholder for real cluster)
+      # For your Minikube practice, this workflow is more about validating changes
+      # and demonstrating the trigger. Actual deployment to YOUR Minikube
+      # still happens locally.
+      run: |
+        echo "This step simulates configuring kubectl for a real Kubernetes cluster."
+        echo "In a production CI/CD, you would configure KUBECONFIG securely here (e.g., from secrets)."
+
+    - name: Validate deploy.sh script
+      run: |
+        chmod +x sdlc-middleware/deploy.sh
+        # This is a dry run or basic validation of the script.
+        # You cannot actually run `kubectl apply` against YOUR local minikube from GitHub Actions.
+        # You could try to use a dummy image tag and `kubectl apply --dry-run=client` to validate syntax.
+        echo "Script validated. To deploy locally, run './sdlc-middleware/deploy.sh <IMAGE_TAG>' after merging to dev."

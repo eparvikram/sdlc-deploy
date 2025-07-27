@@ -1,0 +1,25 @@
+# mgmt-ai-sdlc-deploy/sdlc-middleware/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdlc-middleware-dev # Changed name to reflect dev environment, matches deploy.sh usage
+  labels:
+    app: sdlc-middleware
+    env: dev # Add env label
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sdlc-middleware
+  template:
+    metadata:
+      labels:
+        app: sdlc-middleware
+        env: dev # Add env label
+    spec:
+      containers:
+      - name: sdlc-middleware-container
+        image: paritoshvikram/sdlc-middleware:{{IMAGE_TAG}} # Placeholder for image tag
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000

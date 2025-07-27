@@ -1,0 +1,13 @@
+# mgmt-ai-sdlc-deploy/sdlc-middleware/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdlc-middleware-service-dev # Changed name to reflect dev environment
+spec:
+  selector:
+    app: sdlc-middleware
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: NodePort
