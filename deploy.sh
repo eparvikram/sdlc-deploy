@@ -2,35 +2,49 @@
 
 set -euo pipefail
 
-# Expects the image tag as the first argument
-IMAGE_TAG=${1:?Usage: $0 <image_tag>} # Require image tag as argument
+# This script deploys a specific service based on input.
+# It expects:
+# 1. SERVICE_FOLDER (e.g., "sdlc-middleware")
+# 2. IMAGE_TAG (e.g., "abcd123")
 
-SERVICE_NAME="sdlc-middleware" # Name of your service folder
+SERVICE_FOLDER=${1:?Usage: $0 <service_folder> <image_tag>}
+TARGET_IMAGE_TAG=${2:?Usage: $0 <service_folder> <image_tag>}
 
-echo "Deploying ${SERVICE_NAME} with image tag ${IMAGE_TAG}"
+echo "Deploying service '${SERVICE_FOLDER}' with image tag '${TARGET_IMAGE_TAG}'"
 
-# Path to deployment and service YAMLs
-DEPLOYMENT_YAML="${SERVICE_NAME}/deployment.yaml"
-SERVICE_YAML="${SERVICE_NAME}/service.yaml"
+# Define paths relative to the current working directory (root of sdlc-deploy repo)
+DEPLOYMENT_YAML_PATH="${SERVICE_FOLDER}/deployment.yaml"
+SERVICE_YAML_PATH="${SERVICE_FOLDER}/service.yaml"
 
-# Temporarily modify deployment.yaml to set the image tag
-# Create a backup first
-cp "${DEPLOYMENT_YAML}" "${DEPLOYMENT_YAML}.bak"
+# Check if files exist
+if [ ! -f "${DEPLOYMENT_YAML_PATH}" ] || [ ! -f "${SERVICE_YAML_PATH}" ]; then
+  echo "Error: Deployment or Service YAML not found for ${SERVICE_FOLDER}."
+  exit 1
+fi
 
-# Replace the placeholder {{IMAGE_TAG}} with the actual tag
-sed -i "s|{{IMAGE_TAG}}|${IMAGE_TAG}|" "${DEPLOYMENT_YAML}"
+# --- Dynamic Image Tag Replacement ---
+# Create a backup of the original deployment.yaml
+cp "${DEPLOYMENT_YAML_PATH}" "${DEPLOYMENT_YAML_PATH}.bak"
 
-echo "Applying Kubernetes manifests for ${SERVICE_NAME}..."
-kubectl apply -f "${DEPLOYMENT_YAML}"
-kubectl apply -f "${SERVICE_YAML}"
+# Dynamically determine the full image name for sed replacement
+# Assuming your image names follow a pattern like "paritoshvikram/{{service_folder}}"
+# This needs to be robust if your image names differ from folder names
+IMAGE_REPO_NAME="paritoshvikram/${SERVICE_FOLDER}" # Example: paritoshvikram/sdlc-middleware
 
-# Check the rollout status
-echo "Checking deployment rollout status..."
-# Assuming deployment name is sdlc-middleware-dev based on your modified deployment.yaml
-kubectl rollout status deployment/${SERVICE_NAME}-dev --timeout=5m
+# Use sed to replace the __IMAGE_TAG__ placeholder with the actual tag
+# Finds the pattern "image: <repo_name>:__IMAGE_TAG__"
+sed -i "s|image: ${IMAGE_REPO_NAME}:__IMAGE_TAG__|image: ${IMAGE_REPO_NAME}:${TARGET_IMAGE_TAG}|" "${DEPLOYMENT_YAML_PATH}"
 
-# Restore the original deployment.yaml
-echo "Restoring original ${DEPLOYMENT_YAML}"
-mv "${DEPLOYMENT_YAML}.bak" "${DEPLOYMENT_YAML}"
+echo "Applying Kubernetes manifests for ${SERVICE_FOLDER}..."
+kubectl apply -f "${DEPLOYMENT_YAML_PATH}"
+kubectl apply -f "${SERVICE_YAML_PATH}"
 
-echo "Deployment process completed for ${SERVICE_NAME}."
+echo "Checking deployment rollout status for ${SERVICE_FOLDER}-dev..."
+# Assuming deployment name is "${SERVICE_FOLDER}-dev"
+kubectl rollout status deployment/${SERVICE_FOLDER}-dev --timeout=5m
+
+# --- Cleanup: Restore the original deployment.yaml ---
+echo "Restoring original ${DEPLOYMENT_YAML_PATH}"
+mv "${DEPLOYMENT_YAML_PATH}.bak" "${DEPLOYMENT_YAML_PATH}"
+
+echo "Deployment process completed for ${SERVICE_FOLDER}."
