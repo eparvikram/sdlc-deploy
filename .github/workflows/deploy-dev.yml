@@ -1,12 +1,23 @@
-# mgmt-ai-sdlc-deploy/.github/workflows/deploy-dev.yml
-name: Deploy SDLC Middleware to Dev Env
+# sdlc-deploy/.github/workflows/deploy-dev.yml
+name: Deploy Services to Dev Env
 
 on:
   push:
     branches:
-      - uplift # Trigger on pushes to the 'uplift' branch
+      - uplift # Trigger on pushes to the 'dev' branch
     paths:
-      - 'sdlc-middleware/**' # Only trigger if changes are within the sdlc-middleware folder
+      - 'sdlc-middleware/**' # Only trigger if changes are within sdlc-middleware folder
+      # - 'some-other-service/**' # Add other service paths if applicable
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+    inputs:
+      service_folder:
+        description: 'Folder name of the service to deploy (e.g., sdlc-middleware)'
+        required: true
+        default: 'sdlc-middleware' # Provide a default for convenience
+      image_tag:
+        description: 'Image tag to deploy (e.g., commit SHA from build repo)'
+        required: true
+        default: 'latest' # Should ideally be replaced by actual tag
 
 jobs:
   deploy:
@@ -15,18 +26,44 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Kubeconfig (Placeholder for real cluster)
-      # For your Minikube practice, this workflow is more about validating changes
-      # and demonstrating the trigger. Actual deployment to YOUR Minikube
-      # still happens locally.
+    - name: Setup Kubeconfig (for real cluster deployment in CI/CD)
+      # For your Minikube practice, this part is for demonstration.
+      # For a remote cluster, you would configure kubectl authentication here.
       run: |
         echo "This step simulates configuring kubectl for a real Kubernetes cluster."
-        echo "In a production CI/CD, you would configure KUBECONFIG securely here (e.g., from secrets)."
+        echo "For local Minikube, you run 'deploy.sh' manually."
 
-    - name: Validate deploy.sh script
+    - name: Determine service folder and image tag for execution
+      id: set_deploy_vars
       run: |
-        chmod +x sdlc-middleware/deploy.sh
-        # This is a dry run or basic validation of the script.
-        # You cannot actually run `kubectl apply` against YOUR local minikube from GitHub Actions.
-        # You could try to use a dummy image tag and `kubectl apply --dry-run=client` to validate syntax.
-        echo "Script validated. To deploy locally, run './sdlc-middleware/deploy.sh <IMAGE_TAG>' after merging to dev."
+        SERVICE_FOLDER="${{ github.event.inputs.service_folder }}"
+        DEPLOY_IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          # On push, you need a way to determine *which* service changed
+          # and what its *latest image tag* should be. This is complex to automate reliably.
+          # For this specific path trigger, we assume it's sdlc-middleware.
+          SERVICE_FOLDER="sdlc-middleware"
+          # For automated pushes, you likely need to fetch the latest good SHA
+          # from your 'run' repo. This might involve:
+          #   - A separate step to call GitHub API for latest 'uplift' SHA from 'run' repo.
+          #   - Or, the 'run' repo's build pipeline sending a 'repository_dispatch'
+          #     event with the image tag, which this workflow would then use.
+          # For now, let's use a placeholder or assume 'latest' for push.
+          DEPLOY_IMAGE_TAG="latest" # Placeholder if no explicit image_tag is provided by push trigger
+          echo "Warning: Automated push triggers often require more sophisticated tag resolution."
+        fi
+
+        echo "DEPLOY_IMAGE_TAG=$DEPLOY_IMAGE_TAG" >> $GITHUB_ENV
+        echo "SERVICE_FOLDER=$SERVICE_FOLDER" >> $GITHUB_ENV
+        echo "Deploying service: $SERVICE_FOLDER with image tag: $DEPLOY_IMAGE_TAG"
+
+
+    - name: Make deploy script executable and execute
+      run: |
+        chmod +x deploy.sh # Script is at the root of the repo
+        ./deploy.sh "${SERVICE_FOLDER}" "${DEPLOY_IMAGE_TAG}"
+
+    - name: Post-deployment checks (Optional)
+      run: |
+        echo "Add your post-deployment checks here, e.g., health checks, smoke tests."
