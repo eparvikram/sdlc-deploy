@@ -18,8 +18,8 @@ spec:
         env: dev # Add env label
     spec:
       containers:
-      - name: sdlc-middleware-container
-        image: paritoshvikram/sdlc-middleware:{{IMAGE_TAG}} # Placeholder for image tag
+      - name: code_gen_hld
+        image: paritoshvikram/code_gen_hld:{{IMAGE_TAG}} # Placeholder for image tag
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
